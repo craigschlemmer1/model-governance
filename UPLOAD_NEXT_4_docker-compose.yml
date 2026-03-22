@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: model-governance-backend
+    ports:
+      - "5000:5000"
+    environment:
+      FLASK_ENV: production
+      UPLOAD_FOLDER: /app/uploads
+      MAX_FILE_SIZE: 52428800
+    volumes:
+      - ./backend/uploads:/app/uploads
+    restart: unless-stopped
+    networks:
+      - model-governance-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: model-governance-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - model-governance-network
+    environment:
+      - VITE_API_URL=http://backend:5000
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  model-governance-network:
+    driver: bridge
